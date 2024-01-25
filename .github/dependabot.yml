@@ -2,40 +2,6 @@ version: 2
 
 updates:
   - package-ecosystem: "gomod"
-    directory: "/operator"
-    target-branch: "v2"
-    schedule:
-      interval: "weekly"
-    labels:
-      - "v2"
-      - "dependencies"
-    reviewers:
-      - sakoush
-
-  - package-ecosystem: "gomod"
-    directory: "/apis/go"
-    target-branch: "v2"
-    schedule:
-      interval: "weekly"
-    labels:
-      - "v2"
-      - "dependencies"
-    reviewers:
-      - sakoush
-
-  - package-ecosystem: "gomod"
-    directory: "/tests/integration"
-    target-branch: "v2"
-    schedule:
-      interval: "weekly"
-    labels:
-      - "v2"
-      - "dependencies"
-    reviewers:
-      - sakoush
-
-
-  - package-ecosystem: "gomod"
     directory: "/scheduler"
     target-branch: "v2"
     schedule:
@@ -44,30 +10,8 @@ updates:
       - "v2"
       - "dependencies"
     reviewers:
-      - sakoush
+      - lc525
 
-  - package-ecosystem: "gomod"
-    directory: "/hodometer"
-    target-branch: "v2"
-    schedule:
-      interval: "weekly"
-    labels:
-      - "v2"
-      - "dependencies"
-    reviewers:
-      - sakoush
-
-  - package-ecosystem: "gomod"
-    directory: "/components/tls"
-    target-branch: "v2"
-    schedule:
-      interval: "weekly"
-    labels:
-      - "v2"
-      - "dependencies"
-    reviewers:
-      - sakoush
-      
   - package-ecosystem: "gradle"
     directory: "/scheduler/data-flow"
     target-branch: "v2"
@@ -77,7 +21,7 @@ updates:
       - "v2"
       - "dependencies"
     reviewers:
-      - sakoush
+      - lc525
 
   - package-ecosystem: "docker"
     directory: "/scheduler"
@@ -88,27 +32,4 @@ updates:
       - "v2"
       - "dependencies"
     reviewers:
-      - sakoush
-
-  - package-ecosystem: "docker"
-    directory: "/operator"
-    target-branch: "v2"
-    schedule:
-      interval: "weekly"
-    labels:
-      - "v2"
-      - "dependencies"
-    reviewers:
-      - sakoush
-
-  - package-ecosystem: "docker"
-    directory: "/hodometer"
-    target-branch: "v2"
-    schedule:
-      interval: "weekly"
-    labels:
-      - "v2"
-
-      - "dependencies"
-    reviewers:
-      - sakoush
+      - lc525
