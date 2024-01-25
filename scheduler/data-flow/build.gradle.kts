@@ -22,7 +22,7 @@ dependencies {
     implementation("io.klogging:klogging-jvm:0.4.4")
 
     // Kafka
-    implementation("org.apache.kafka:kafka-streams:3.4.0")
+    implementation("org.apache.kafka:kafka-streams:7.5.3-ce")
     implementation("io.klogging:slf4j-klogging:0.2.5")
     testImplementation("org.apache.kafka:kafka-streams-test-utils:3.5.0")
 
