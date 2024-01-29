@@ -27,7 +27,7 @@ dependencies {
     testImplementation("org.apache.kafka:kafka-streams-test-utils:3.5.0")
 
     // gRPC
-    implementation("io.grpc:grpc-kotlin-stub:1.2.1")
+    implementation("io.grpc:grpc-kotlin-stub:1.4.1")
     implementation("io.grpc:grpc-stub:1.57.2")
     implementation("io.grpc:grpc-protobuf:1.57.2")
     runtimeOnly("io.grpc:grpc-netty-shaded:1.44.1")
