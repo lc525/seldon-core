@@ -40,7 +40,7 @@ dependencies {
     implementation("io.kubernetes:client-java:18.0.0")
 
     testImplementation(kotlin("test"))
-    testImplementation("org.junit.jupiter:junit-jupiter-params:5.8.2")
+    testImplementation("org.junit.jupiter:junit-jupiter-params:5.10.2")
     testImplementation("io.strikt:strikt-core:0.34.1")
 }
 
