@@ -35,7 +35,6 @@ data class PipelineMetadata(
     val version: Int,
 )
 
-
 class Pipeline(
     private val metadata: PipelineMetadata,
     private val topology: Topology,
