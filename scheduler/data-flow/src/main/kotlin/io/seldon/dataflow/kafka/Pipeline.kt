@@ -35,7 +35,6 @@ data class PipelineMetadata(
     val version: Int,
 )
 
-
 class Pipeline(
     private val metadata: PipelineMetadata,
     private val topology: Topology,
@@ -140,8 +139,8 @@ class Pipeline(
         ): Pair<Pipeline?, PipelineStatus.Error?> {
             val (topology, numSteps) = buildTopology(metadata, steps, kafkaDomainParams)
             val pipelineProperties = localiseKafkaProperties(kafkaProperties, metadata, numSteps, kafkaConsumerGroupIdPrefix, namespace)
-            var streamsApp : KafkaStreams? = null
-            var pipelineError: PipelineStatus.Error? = null
+            var streamsApp : KafkaStreams?
+            var pipelineError: PipelineStatus.Error?
             try {
                 streamsApp = KafkaStreams(topology, pipelineProperties)
             } catch (e: StreamsException) {
