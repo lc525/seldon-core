@@ -7,6 +7,11 @@ Use of this software is governed by
 the Change License after the Change Date as each is defined in accordance with the LICENSE file.
 */
 
+/**
+ * Scheduler GRPC server for communicating with agents on inference servers
+ * Implements Model autoscaling logic
+ */
+
 package agent
 
 import (

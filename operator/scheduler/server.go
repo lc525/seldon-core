@@ -127,6 +127,9 @@ func (s *SchedulerClient) SubscribeServerEvents(ctx context.Context, grpcClient 
 				logger.Info("Ignoring event for old generation", "currentGeneration", server.Generation, "eventGeneration", event.GetKubernetesMeta().Generation, "server", event.ServerName)
 				return nil
 			}
+
+			// TODO(seldonio): handle server spec update (e.g. change in replicas?)
+
 			// Handle status update
 			server.Status.LoadedModelReplicas = event.NumLoadedModelReplicas
 			return s.updateServerStatus(server)
