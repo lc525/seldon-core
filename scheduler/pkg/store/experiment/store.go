@@ -174,6 +174,11 @@ func (es *ExperimentStore) handleModelEvents(event coordinator.ModelEventMsg) {
 	logger := es.logger.WithField("func", "handleModelEvents")
 	logger.Debugf("Received event %s", event.String())
 
+	if event.Context != coordinator.MODEL_CONTEXT_STATUS_UPDATE {
+		// we don't care non-status update events
+		return
+	}
+
 	go func() {
 		var updatedExperiments []*Experiment
 		es.mu.Lock()

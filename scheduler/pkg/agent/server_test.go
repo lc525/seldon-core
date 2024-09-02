@@ -50,6 +50,9 @@ func (f mockStore) GetModels() ([]*store.ModelSnapshot, error) {
 	return models, nil
 }
 
+func (f mockStore) ResetModelUpdateContext(key string) {
+}
+
 func (m mockStore) LockModel(modelId string) {
 }
 

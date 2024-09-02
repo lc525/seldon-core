@@ -116,7 +116,7 @@ func (s *SchedulerClient) SubscribeServerEvents(ctx context.Context, grpcClient 
 			continue
 		}
 
-		// Try to update status
+		// Try to update Server CR according to event from the scheduler
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			server := &v1alpha1.Server{}
 			err = s.Get(ctx, client.ObjectKey{Name: event.ServerName, Namespace: event.GetKubernetesMeta().GetNamespace()}, server)
@@ -128,18 +128,32 @@ func (s *SchedulerClient) SubscribeServerEvents(ctx context.Context, grpcClient 
 				return nil
 			}
 
-			// TODO(seldonio): handle server spec update (e.g. change in replicas?)
-
-			// Handle status update
-			server.Status.LoadedModelReplicas = event.NumLoadedModelReplicas
-			return s.updateServerStatus(server)
+			// The two types of updates we may get from the scheduler are:
+			// 1. Status updates
+			// 2. Requests for changing the number of server replicas
+			//
+			// We never combine the two types of updates in a single event.
+			if event.ExpectedReplicas != event.AvailableReplicas {
+				return s.applyReplicaUpdates(ctx, server, event)
+			} else {
+				return s.applyStatusUpdates(ctx, server, event)
+			}
 		})
 		if retryErr != nil {
-			logger.Error(err, "Failed to update status", "model", event.ServerName)
+			logger.Error(err, "Failed to update server", "model", event.ServerName)
 		}
-
 	}
 	return nil
+}
+
+func (s *SchedulerClient) applyReplicaUpdates(ctx context.Context, server *v1alpha1.Server, event *scheduler.ServerStatusResponse) error {
+	*server.Spec.Replicas = event.ExpectedReplicas
+	return s.Update(ctx, server)
+}
+
+func (s *SchedulerClient) applyStatusUpdates(_ context.Context, server *v1alpha1.Server, event *scheduler.ServerStatusResponse) error {
+	server.Status.LoadedModelReplicas = event.NumLoadedModelReplicas
+	return s.updateServerStatus(server)
 }
 
 func (s *SchedulerClient) updateServerStatus(server *v1alpha1.Server) error {

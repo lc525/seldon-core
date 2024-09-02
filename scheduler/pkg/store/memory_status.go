@@ -12,6 +12,8 @@ package store
 import (
 	"time"
 
+	"github.com/seldonio/seldon-core/apis/go/v2/mlops/scheduler"
+
 	"github.com/seldonio/seldon-core/scheduler/v2/pkg/coordinator"
 )
 
@@ -116,11 +118,29 @@ func (m *MemoryStore) FailedScheduling(modelVersion *ModelVersion, reason string
 	if reset {
 		modelVersion.server = ""
 	}
+
+	ctx := coordinator.MODEL_CONTEXT_STATUS_UPDATE
+	// If the failure to schedule comes in the context of a scaling operation (either manual via
+	// modifying the Model CR or automatic via autoscaling triggers), set the relevant context
+	// on the published event. This will allow downstream components to take appropriate action
+	// (for example, scale the Server replicas accordingly).
+	//
+	// We only do so if at least one candidate server exists for the model.
+	if !reset {
+		switch modelVersion.GetModelUpdateContext() {
+		case scheduler.Model_UpdateCtxReplicasChanged:
+			fallthrough
+		case scheduler.Model_UpdateCtxScalingUp:
+			ctx = coordinator.MODEL_CONTEXT_SCALING_FAILED
+		}
+	}
+
 	m.eventHub.PublishModelEvent(
-		modelFailureEventSource,
+		ModelScheduleFailureEventSource,
 		coordinator.ModelEventMsg{
 			ModelName:    modelVersion.GetMeta().GetName(),
 			ModelVersion: modelVersion.GetVersion(),
+			Context:      ctx,
 		},
 	)
 }

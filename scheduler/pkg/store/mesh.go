@@ -390,6 +390,10 @@ func (m *ModelVersion) GetModel() *pb.Model {
 	return proto.Clone(m.modelDefn).(*pb.Model)
 }
 
+func (m *ModelVersion) GetModelUpdateContext() pb.Model_UpdateCtx {
+	return m.modelDefn.UpdateCtx
+}
+
 func (m *ModelVersion) GetMeta() *pb.MetaData {
 	return proto.Clone(m.modelDefn.GetMeta()).(*pb.MetaData)
 }
@@ -404,6 +408,14 @@ func (m *ModelVersion) GetDeploymentSpec() *pb.DeploymentSpec {
 
 func (m *ModelVersion) SetDeploymentSpec(spec *pb.DeploymentSpec) {
 	m.modelDefn.DeploymentSpec = spec
+}
+
+func (m *ModelVersion) SetUpdateContext(ctx pb.Model_UpdateCtx) {
+	m.modelDefn.UpdateCtx = ctx
+}
+
+func (m *ModelVersion) ResetUpdateContext() {
+	m.modelDefn.UpdateCtx = pb.Model_UpdateCtxUnknown
 }
 
 func (m *ModelVersion) Server() string {

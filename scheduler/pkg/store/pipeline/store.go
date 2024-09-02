@@ -402,6 +402,11 @@ func (ps *PipelineStore) handleModelEvents(event coordinator.ModelEventMsg) {
 	logger := ps.logger.WithField("func", "handleModelEvents")
 	logger.Infof("Received event %s", event.String())
 
+	if event.Context != coordinator.MODEL_CONTEXT_STATUS_UPDATE {
+		// we don't care non-status update events
+		return
+	}
+
 	go func() {
 		ps.modelStatusHandler.mu.RLock()
 		defer ps.modelStatusHandler.mu.RUnlock()

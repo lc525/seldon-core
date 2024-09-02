@@ -130,6 +130,7 @@ func (m *MemoryStore) UpdateModel(req *pb.LoadModelRequest) error {
 			)
 		}
 	} else {
+		model.Latest().SetUpdateContext(req.GetModel().UpdateCtx)
 		meq := ModelEqualityCheck(model.Latest().modelDefn, req.GetModel())
 		if meq.Equal {
 			logger.Debugf("Model %s semantically equal - doing nothing", modelName)
@@ -143,6 +144,13 @@ func (m *MemoryStore) UpdateModel(req *pb.LoadModelRequest) error {
 				"Model %s deployment spec differs - updating latest model version with new spec",
 				modelName,
 			)
+			// When a specific update context has not already been set, update it
+			// based on the changes between the existing model and the one in the request
+			if req.GetModel().UpdateCtx == pb.Model_UpdateCtxUnknown {
+				if model.Latest().GetDeploymentSpec().GetReplicas() != req.GetModel().GetDeploymentSpec().GetReplicas() {
+					model.Latest().SetUpdateContext(pb.Model_UpdateCtxReplicasChanged)
+				}
+			}
 			model.Latest().SetDeploymentSpec(req.GetModel().GetDeploymentSpec())
 		}
 		if meq.MetaDiffers {
@@ -189,6 +197,16 @@ func (m *MemoryStore) GetModel(key string) (*ModelSnapshot, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	return m.getModelImpl(key), nil
+}
+
+func (m *MemoryStore) ResetModelUpdateContext(key string) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	model, ok := m.store.models[key]
+	if ok {
+		model.Latest().ResetUpdateContext()
+	}
+	// Nothing to do if model is not found
 }
 
 func (m *MemoryStore) RemoveModel(req *pb.UnloadModelRequest) error {

@@ -12,15 +12,23 @@ package coordinator
 import "fmt"
 
 type ServerEventUpdateContext int
+type ModelEventContext int
 
 const (
 	SERVER_STATUS_UPDATE ServerEventUpdateContext = iota
 	SERVER_REPLICA_CONNECTED
 )
 
+const (
+	MODEL_CONTEXT_STATUS_UPDATE ModelEventContext = iota
+	MODEL_CONTEXT_SCALING_FAILED
+)
+
 type ModelEventMsg struct {
 	ModelName    string
 	ModelVersion uint32
+	Source       string
+	Context      ModelEventContext
 }
 
 func (m ModelEventMsg) String() string {

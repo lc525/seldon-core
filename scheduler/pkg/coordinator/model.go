@@ -61,6 +61,7 @@ func (h *EventHub) newModelEventHandler(
 		if h.closed {
 			return
 		}
+		me.Source = e.Source
 		events <- me
 		h.lock.RUnlock()
 	}

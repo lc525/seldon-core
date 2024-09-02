@@ -79,12 +79,70 @@ func (s *SchedulerServer) handleModelEvent(event coordinator.ModelEventMsg) {
 	logger := s.logger.WithField("func", "handleModelEvent")
 	logger.Debugf("Got model event msg for %s", event.String())
 
-	// TODO - Should this spawn a goroutine?
-	// Surely if we do we're risking reordering of events, e.g. load/unload -> unload/load?
+	// not spawning goroutine as that risks reordering of events,
+	// e.g. load/unload -> unload/load
+	logger.Debugf("Model event from source: %s", event.Source)
+	switch event.Context {
+	case coordinator.MODEL_CONTEXT_SCALING_FAILED:
+		s.handleFailedModelScalingEvent(event)
+	}
 	err := s.sendModelStatusEvent(event)
 	if err != nil {
 		logger.WithError(err).Errorf("Failed to update model status for model %s", event.String())
 	}
+}
+
+func (s *SchedulerServer) handleFailedModelScalingEvent(event coordinator.ModelEventMsg) {
+	logger := s.logger.WithField("func", "handleFailedModelScalingEvent")
+	logger.Debugf("can not scale model %s using available server resources; triggering server scaling", event.String())
+
+	err := s.triggerServerScaling(event)
+	if err != nil {
+		logger.WithError(err).Errorf("Failed to send failed scaling event for model %s", event.String())
+	}
+}
+
+func (s *SchedulerServer) triggerServerScaling(evt coordinator.ModelEventMsg) error {
+	logger := s.logger.WithField("func", "sendModelStatusEvent")
+	model, err := s.modelStore.GetModel(evt.ModelName)
+	if err != nil {
+		return err
+	}
+	latestModel := model.GetLatest()
+	if latestModel != nil && latestModel.GetVersion() == evt.ModelVersion {
+		if latestModel.DesiredReplicas() > int(latestModel.ModelState().AvailableReplicas) {
+			serverName := latestModel.Server()
+
+			server, err := s.modelStore.GetServer(serverName, true, false)
+			if err != nil {
+				logger.WithError(err).Errorf("Failed to get server details for model %s", evt.String())
+				return err
+			}
+			newExpectedReplicas := server.ExpectedReplicas + 1
+			if newExpectedReplicas < latestModel.DesiredReplicas() {
+				newExpectedReplicas = latestModel.DesiredReplicas()
+			}
+			serverScalingUpdate := &pb.ServerStatusResponse{
+				ServerName:       serverName,
+				ExpectedReplicas: int32(newExpectedReplicas),
+				KubernetesMeta:   server.KubernetesMeta,
+			}
+			s.serverEventStream.mu.Lock()
+			defer s.serverEventStream.mu.Unlock()
+			for stream, subscription := range s.serverEventStream.streams {
+				hasExpired, err := sendWithTimeout(func() error { return stream.Send(serverScalingUpdate) }, s.timeout)
+				if hasExpired {
+					// this should trigger a reconnect from the client
+					close(subscription.fin)
+					delete(s.serverEventStream.streams, stream)
+				}
+				if err != nil {
+					logger.WithError(err).Errorf("Failed to send server scaling event to %s", subscription.name)
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (s *SchedulerServer) StopSendModelEvents() {

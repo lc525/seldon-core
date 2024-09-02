@@ -461,6 +461,9 @@ func (f fakeModelStore) GetModels() ([]*store.ModelSnapshot, error) {
 	panic("implement me")
 }
 
+func (f fakeModelStore) ResetModelUpdateContext(key string) {
+}
+
 func (f fakeModelStore) LockModel(modelId string) {
 	panic("implement me")
 }
