@@ -537,11 +537,12 @@ func createScalingPseudoRequest(message *pb.ModelScalingTriggerMessage, model *s
 	lastAvailableModelVersion := model.GetLastAvailableModel()
 	tryScaleDown := (message.Trigger == pb.ModelScalingTriggerMessage_SCALE_DOWN && !model.Deleted)
 	tryScaleUp := (message.Trigger == pb.ModelScalingTriggerMessage_SCALE_UP && lastAvailableModelVersion != nil && lastAvailableModelVersion.GetVersion() == lastModelVersion.GetVersion())
-	updateCtx := pbs.Model_UpdateCtxUnknown
+
+	updateMeta := pbs.MetaData_UpdateMetaUnknown
 	if tryScaleUp {
-		updateCtx = pbs.Model_UpdateCtxScalingUp
+		updateMeta = pbs.MetaData_ModelScalingUp
 	} else if tryScaleDown {
-		updateCtx = pbs.Model_UpdateCtxScalingDown
+		updateMeta = pbs.ModelData_ModelScalingDown
 	}
 
 	if !tryScaleUp && !tryScaleDown {
@@ -555,7 +556,7 @@ func createScalingPseudoRequest(message *pb.ModelScalingTriggerMessage, model *s
 	}
 
 	modelProtos := lastModelVersion.GetModel() // this is a clone of the protos
-	modelProtos.UpdateCtx = updateCtx
+	modelProtos.Meta.UpdateReason = updateMeta
 
 	// if we are scaling up:
 	// the model should be available

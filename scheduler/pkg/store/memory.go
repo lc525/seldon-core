@@ -130,7 +130,7 @@ func (m *MemoryStore) UpdateModel(req *pb.LoadModelRequest) error {
 			)
 		}
 	} else {
-		model.Latest().SetUpdateContext(req.GetModel().UpdateCtx)
+		model.Latest().SetUpdateReason(req.GetModel().Meta.UpdateReason)
 		meq := ModelEqualityCheck(model.Latest().modelDefn, req.GetModel())
 		if meq.Equal {
 			logger.Debugf("Model %s semantically equal - doing nothing", modelName)
@@ -146,9 +146,10 @@ func (m *MemoryStore) UpdateModel(req *pb.LoadModelRequest) error {
 			)
 			// When a specific update context has not already been set, update it
 			// based on the changes between the existing model and the one in the request
-			if req.GetModel().UpdateCtx == pb.Model_UpdateCtxUnknown {
+			if req.GetModel().Meta.GetUpdateReason() == pb.MetaData_UpdateMetaUnknown {
 				if model.Latest().GetDeploymentSpec().GetReplicas() != req.GetModel().GetDeploymentSpec().GetReplicas() {
-					model.Latest().SetUpdateContext(pb.Model_UpdateCtxReplicasChanged)
+					reason := pb.MetaData_ModelReplicasChanged
+					model.Latest().SetUpdateReason(&reason)
 				}
 			}
 			model.Latest().SetDeploymentSpec(req.GetModel().GetDeploymentSpec())

@@ -277,6 +277,8 @@ var replicaStates = []ModelReplicaState{
 	Draining,
 }
 
+var defaultUpdateMeta = pb.MetaData_UpdateMetaUnknown
+
 // LoadedUnavailable is included as we can try to move state to Available via an Envoy update
 func (m ModelReplicaState) CanReceiveTraffic() bool {
 	return (m == Loaded || m == Available || m == LoadedUnavailable || m == Draining)
@@ -390,8 +392,12 @@ func (m *ModelVersion) GetModel() *pb.Model {
 	return proto.Clone(m.modelDefn).(*pb.Model)
 }
 
-func (m *ModelVersion) GetModelUpdateContext() pb.Model_UpdateCtx {
-	return m.modelDefn.UpdateCtx
+func (m *ModelVersion) GetModelUpdateReason() pb.MetaData_UpdateMeta {
+	if m.modelDefn.Meta.UpdateReason != nil {
+		return *m.modelDefn.Meta.UpdateReason
+	} else {
+		return defaultUpdateMeta
+	}
 }
 
 func (m *ModelVersion) GetMeta() *pb.MetaData {
@@ -410,12 +416,12 @@ func (m *ModelVersion) SetDeploymentSpec(spec *pb.DeploymentSpec) {
 	m.modelDefn.DeploymentSpec = spec
 }
 
-func (m *ModelVersion) SetUpdateContext(ctx pb.Model_UpdateCtx) {
-	m.modelDefn.UpdateCtx = ctx
+func (m *ModelVersion) SetUpdateReason(updateReason *pb.MetaData_UpdateMeta) {
+	m.modelDefn.Meta.UpdateReason = updateReason
 }
 
-func (m *ModelVersion) ResetUpdateContext() {
-	m.modelDefn.UpdateCtx = pb.Model_UpdateCtxUnknown
+func (m *ModelVersion) ResetUpdateReason() {
+	m.modelDefn.Meta.UpdateReason = &defaultUpdateMeta
 }
 
 func (m *ModelVersion) Server() string {

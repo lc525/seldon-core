@@ -13,29 +13,30 @@ message LoadModelRequest {
 }
 
 message Model {
-  enum UpdateCtx {
-    UpdateCtxUnknown = 0;
-    UpdateCtxScalingUp = 1;
-    UpdateCtxScalingDown = 2;
-    UpdateCtxReplicasChanged = 3;
-  }
   MetaData meta = 1;
   ModelSpec modelSpec = 2;
   DeploymentSpec deploymentSpec = 3;
   StreamSpec streamSpec = 4;
-  // updateCtx may be used to persist the context around model creation
-  // or updates. This information can then be used during scheduling.
-  // For example, if the model is being scaled up, the scheduler
-  // implementation may choose to also scale-up the inference servers
-  // if there aren't enough replicas available.
-  UpdateCtx updateCtx = 5;
 }
 
 message MetaData {
+  enum UpdateMeta {
+    UpdateMetaUnknown = 0;
+    ModelScalingUp = 1;
+    ModelScalingDown = 2;
+    ModelReplicasChanged = 3;
+  }
   string name = 1;
   optional string kind = 2;
   optional string version = 3;
   optional KubernetesMeta kubernetesMeta = 4; // Kubernetes specific config
+  // updateReason may be used to persist the context around model creation
+  // or updates. This information can then be used during scheduling.
+  // For example, this allows us to determine if the model update has been
+  // initiated manually or via auto-scaling. Depending on this and other data
+  // the scheduler implementation may choose to also scale-up the inference servers
+  // if there aren't enough replicas available.
+  optional UpdateMeta updateReason = 5;
 }
 
 message DeploymentSpec {

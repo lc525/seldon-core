@@ -74,12 +74,12 @@ build: build-go build-jvm
 .GOLANGCILINT_VERSION := v1.59.1
 .GOLANGCILINT_PATH := $(shell go env GOPATH)/bin/golangci-lint-versions/$(.GOLANGCILINT_VERSION)
 
-${.GOLANGCILINT_PATH}/golangci-lint:
+${.GOLANGCILINT_PATH}/golangci-lint-versions:
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
 			| sh -s -- -b ${.GOLANGCILINT_PATH} ${.GOLANGCILINT_VERSION}
 
 .PHONY: lint-go
-lint-go: ${.GOLANGCILINT_PATH}/golangci-lint
+lint-go: ${.GOLANGCILINT_PATH}/golangci-lint-versions
 	gofmt -w pkg
 	gofmt -w cmd
 	${.GOLANGCILINT_PATH}/golangci-lint run --fix
