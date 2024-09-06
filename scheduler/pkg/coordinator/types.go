@@ -12,7 +12,7 @@ package coordinator
 import "fmt"
 
 type ServerEventUpdateContext int
-type ModelEventUpdateMeta int
+type ModelEventUpdateContext int
 
 const (
 	SERVER_STATUS_UPDATE ServerEventUpdateContext = iota
@@ -20,15 +20,15 @@ const (
 )
 
 const (
-	MODEL_STATUS_UPDATE ModelEventUpdateMeta = iota
+	MODEL_STATUS_UPDATE ModelEventUpdateContext = iota
 	MODEL_SCALING_FAILED
 )
 
 type ModelEventMsg struct {
-	ModelName    string
-	ModelVersion uint32
-	Source       string
-	UpdateMeta   ModelEventUpdateMeta
+	ModelName     string
+	ModelVersion  uint32
+	Source        string
+	UpdateContext ModelEventUpdateContext
 }
 
 func (m ModelEventMsg) String() string {

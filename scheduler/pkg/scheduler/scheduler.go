@@ -123,7 +123,7 @@ func (s *SimpleScheduler) scheduleToServer(modelName string) error {
 	if latestModel == nil {
 		return errors.New("Unable to find latest version for model")
 	}
-	defer s.store.ResetModelUpdateContext(modelName)
+	defer s.store.ResetModelUpdateReason(modelName)
 
 	if model.Deleted {
 		// we need to call UpdateLoadedModels anyway:

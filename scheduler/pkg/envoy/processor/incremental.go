@@ -174,7 +174,7 @@ func (p *IncrementalProcessor) handleModelEvents(event coordinator.ModelEventMsg
 	logger := p.logger.WithField("func", "handleModelEvents")
 	logger.Debugf("Received sync for model %s", event.String())
 
-	if event.UpdateMeta != coordinator.MODEL_STATUS_UPDATE {
+	if event.UpdateContext != coordinator.MODEL_STATUS_UPDATE {
 		// ignore non-status update events
 		return
 	}

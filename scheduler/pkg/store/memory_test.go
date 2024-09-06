@@ -33,7 +33,12 @@ func TestUpdateModel(t *testing.T) {
 		loadModelReq    *pb.LoadModelRequest
 		expectedVersion uint32
 		err             error
+		expectedUpdateReason *pb.MetaData_UpdateMeta
 	}
+
+	updateReasonScalingUp := pb.MetaData_ModelScalingUp
+	updateModelReplicasChanged := pb.MetaData_ModelReplicasChanged
+	updateReasonDefault := pb.MetaData_UpdateMetaUnknown
 
 	tests := []test{
 		{
@@ -196,6 +201,127 @@ func TestUpdateModel(t *testing.T) {
 			expectedVersion: 1,
 			err:             errors.New("Model this.Name does not have a valid name - it must be alphanumeric and not contains dots (.)"),
 		},
+		{
+			name: "SpecAndReplicasDiffer",
+			store: &LocalSchedulerStore{
+				models: map[string]*Model{
+					"model": {
+						versions: []*ModelVersion{
+							{
+								version: 1,
+								modelDefn: &pb.Model{
+									Meta: &pb.MetaData{
+										Name: "model",
+									},
+									ModelSpec: &pb.ModelSpec{
+										Uri: "gs:/models/iris",
+									},
+									DeploymentSpec: &pb.DeploymentSpec{
+										Replicas: 2,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			loadModelReq: &pb.LoadModelRequest{
+				Model: &pb.Model{
+					Meta: &pb.MetaData{
+						Name: "model",
+					},
+					ModelSpec: &pb.ModelSpec{
+						Uri: "gs:/models/iris/v2",
+					},
+					DeploymentSpec: &pb.DeploymentSpec{
+						Replicas: 4,
+					},
+				},
+			},
+			expectedVersion: 2,
+		},
+		{
+			name: "StoreUpdateMetaSameNumberOfReplicas",
+			store: &LocalSchedulerStore{
+				models: map[string]*Model{
+					"model": {
+						versions: []*ModelVersion{
+							{
+								version: 1,
+								modelDefn: &pb.Model{
+									Meta: &pb.MetaData{
+										Name: "model",
+									},
+									ModelSpec: &pb.ModelSpec{
+										Uri: "gs:/models/iris",
+									},
+									DeploymentSpec: &pb.DeploymentSpec{
+										Replicas: 2,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			loadModelReq: &pb.LoadModelRequest{
+				Model: &pb.Model{
+					Meta: &pb.MetaData{
+						Name:         "model",
+						UpdateReason: &updateReasonScalingUp,
+					},
+					ModelSpec: &pb.ModelSpec{
+						Uri: "gs:/models/iris",
+					},
+					DeploymentSpec: &pb.DeploymentSpec{
+						Replicas: 2,
+					},
+				},
+			},
+			expectedVersion:      1,
+			expectedUpdateReason: &updateReasonScalingUp,
+		},
+		{
+			name: "StoreUpdateMetaDifferentNumberOfReplicas",
+			store: &LocalSchedulerStore{
+				models: map[string]*Model{
+					"model": {
+						versions: []*ModelVersion{
+							{
+								version: 1,
+								modelDefn: &pb.Model{
+									Meta: &pb.MetaData{
+										Name: "model",
+									},
+									ModelSpec: &pb.ModelSpec{
+										Uri: "gs:/models/iris",
+									},
+									DeploymentSpec: &pb.DeploymentSpec{
+										Replicas: 2,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			loadModelReq: &pb.LoadModelRequest{
+				Model: &pb.Model{
+					Meta: &pb.MetaData{
+						Name:         "model",
+						UpdateReason: &updateReasonScalingUp,
+					},
+					ModelSpec: &pb.ModelSpec{
+						Uri: "gs:/models/iris",
+					},
+					DeploymentSpec: &pb.DeploymentSpec{
+						Replicas: 4,
+					},
+				},
+			},
+			expectedVersion:      1,
+			expectedUpdateReason: &updateReasonScalingUp,
+		},
 	}
 
 	for _, test := range tests {
@@ -204,15 +330,35 @@ func TestUpdateModel(t *testing.T) {
 			eventHub, err := coordinator.NewEventHub(logger)
 			g.Expect(err).To(BeNil())
 			ms := NewMemoryStore(logger, test.store, eventHub)
+			m, modelExists := test.store.models[test.loadModelReq.GetModel().GetMeta().GetName()]
+			replicasUpdated :=
+				modelExists && m.Latest() != nil &&
+					m.Latest().GetDeploymentSpec() != nil &&
+					m.Latest().GetDeploymentSpec().GetReplicas() != test.loadModelReq.GetModel().GetDeploymentSpec().GetReplicas()
 			err = ms.UpdateModel(test.loadModelReq)
 			if test.err != nil {
 				g.Expect(err.Error()).To(BeIdenticalTo(test.err.Error()))
 			} else {
 				g.Expect(err).To(BeNil())
-				m := test.store.models[test.loadModelReq.GetModel().GetMeta().GetName()]
+				if !modelExists { // model should exist after update, re-fetch it
+								m = test.store.models[test.loadModelReq.GetModel().GetMeta().GetName()]
+				}
 				latest := m.Latest()
-				g.Expect(latest.modelDefn).To(Equal(test.loadModelReq.Model))
+				g.Expect(latest.modelDefn.ModelSpec).To(Equal(test.loadModelReq.Model.ModelSpec))
+				g.Expect(latest.modelDefn.Meta.GetName()).To(Equal(test.loadModelReq.Model.Meta.GetName()))
+				if latest.modelDefn.Meta.UpdateReason == nil { // only true for newly created models
+								g.Expect(latest.GetModelUpdateReason()).To(Equal(updateReasonDefault))
+				}
 				g.Expect(latest.GetVersion()).To(Equal(test.expectedVersion))
+				if test.expectedUpdateReason != nil {
+								g.Expect(latest.GetModelUpdateReason()).To(Equal(*test.expectedUpdateReason))
+				} else {
+								if replicasUpdated {
+								g.Expect(latest.GetModelUpdateReason()).To(Equal(updateModelReplicasChanged))
+								} else {
+								g.Expect(latest.GetModelUpdateReason()).To(Equal(updateReasonDefault))
+								}
+				}
 			}
 		})
 	}

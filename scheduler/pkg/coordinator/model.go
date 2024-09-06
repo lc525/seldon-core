@@ -61,6 +61,9 @@ func (h *EventHub) newModelEventHandler(
 		if h.closed {
 			return
 		}
+		// Propagate the busV3.Event source to the ModelEventMsg
+		// This is useful for logging, but also in case we want to distinguish
+		// the action to take based on where the event came from.
 		me.Source = e.Source
 		events <- me
 		h.lock.RUnlock()

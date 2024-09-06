@@ -81,8 +81,7 @@ func (s *SchedulerServer) handleModelEvent(event coordinator.ModelEventMsg) {
 
 	// not spawning goroutine as that risks reordering of events,
 	// e.g. load/unload -> unload/load
-	logger.Debugf("Model event from source: %s", event.Source)
-	switch event.UpdateMeta {
+	switch event.UpdateContext {
 	case coordinator.MODEL_SCALING_FAILED:
 		s.handleFailedModelScalingEvent(event)
 	}

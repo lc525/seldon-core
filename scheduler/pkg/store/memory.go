@@ -92,6 +92,11 @@ func (m *MemoryStore) addNextModelVersion(model *Model, pbmodel *pb.Model) {
 	version := uint32(1)
 	if model.Latest() != nil {
 		version = model.Latest().GetVersion() + 1
+		if pbmodel.GetMeta().GetUpdateReason() == pb.MetaData_UpdateMetaUnknown &&
+			model.Latest().GetDeploymentSpec().GetReplicas() != pbmodel.GetDeploymentSpec().GetReplicas() {
+			updateReason := pb.MetaData_ModelReplicasChanged
+			pbmodel.GetMeta().UpdateReason = &updateReason
+		}
 	}
 	modelVersion := NewDefaultModelVersion(pbmodel, version)
 
@@ -130,7 +135,8 @@ func (m *MemoryStore) UpdateModel(req *pb.LoadModelRequest) error {
 			)
 		}
 	} else {
-		model.Latest().SetUpdateReason(req.GetModel().Meta.UpdateReason)
+		reqUpdateReason := req.GetModel().GetMeta().GetUpdateReason()
+		model.Latest().SetUpdateReason(&reqUpdateReason)
 		meq := ModelEqualityCheck(model.Latest().modelDefn, req.GetModel())
 		if meq.Equal {
 			logger.Debugf("Model %s semantically equal - doing nothing", modelName)
@@ -146,10 +152,10 @@ func (m *MemoryStore) UpdateModel(req *pb.LoadModelRequest) error {
 			)
 			// When a specific update context has not already been set, update it
 			// based on the changes between the existing model and the one in the request
-			if req.GetModel().Meta.GetUpdateReason() == pb.MetaData_UpdateMetaUnknown {
+			if req.GetModel().GetMeta().GetUpdateReason() == pb.MetaData_UpdateMetaUnknown {
 				if model.Latest().GetDeploymentSpec().GetReplicas() != req.GetModel().GetDeploymentSpec().GetReplicas() {
-					reason := pb.MetaData_ModelReplicasChanged
-					model.Latest().SetUpdateReason(&reason)
+					updateReason := pb.MetaData_ModelReplicasChanged
+					model.Latest().SetUpdateReason(&updateReason)
 				}
 			}
 			model.Latest().SetDeploymentSpec(req.GetModel().GetDeploymentSpec())
@@ -200,12 +206,12 @@ func (m *MemoryStore) GetModel(key string) (*ModelSnapshot, error) {
 	return m.getModelImpl(key), nil
 }
 
-func (m *MemoryStore) ResetModelUpdateContext(key string) {
+func (m *MemoryStore) ResetModelUpdateReason(key string) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	model, ok := m.store.models[key]
 	if ok {
-		model.Latest().ResetUpdateContext()
+		model.Latest().ResetUpdateReason()
 	}
 	// Nothing to do if model is not found
 }

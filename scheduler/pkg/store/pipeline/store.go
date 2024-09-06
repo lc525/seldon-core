@@ -402,7 +402,7 @@ func (ps *PipelineStore) handleModelEvents(event coordinator.ModelEventMsg) {
 	logger := ps.logger.WithField("func", "handleModelEvents")
 	logger.Infof("Received event %s", event.String())
 
-	if event.UpdateMeta != coordinator.MODEL_STATUS_UPDATE {
+	if event.UpdateContext != coordinator.MODEL_STATUS_UPDATE {
 		// we don't care non-status update events
 		return
 	}
