@@ -435,6 +435,85 @@ func TestUnloadModel(t *testing.T) {
 	}
 }
 
+// func TestModelScaling(t *testing.T) {
+// 	g := NewGomegaWithT(t)
+
+// 	createTestScheduler := func() (*SchedulerServer, *mockAgentHandler, *coordinator.EventHub) {
+// 		logger := log.New()
+// 		log.SetLevel(log.DebugLevel)
+// 		eventHub, err := coordinator.NewEventHub(logger)
+// 		g.Expect(err).To(BeNil())
+// 		schedulerStore := store.NewMemoryStore(logger, store.NewLocalSchedulerStore(), eventHub)
+// 		experimentServer := experiment.NewExperimentServer(logger, eventHub, nil, nil)
+// 		pipelineServer := pipeline.NewPipelineStore(logger, eventHub, schedulerStore)
+// 		server := NewAgentServer(logger, test.store, nil, eventHub, false)
+// 		server.agents = test.agents
+// 		mockAgent := &mockAgentHandler{}
+// 		scheduler := scheduler2.NewSimpleScheduler(logger,
+// 			schedulerStore,
+// 			scheduler2.DefaultSchedulerConfig(schedulerStore))
+// 		s := NewSchedulerServer(logger, schedulerStore, experimentServer, pipelineServer, scheduler, eventHub)
+// 		return s, mockAgent, eventHub
+// 	}
+
+// 	type test struct {
+// 		name	string
+// 		req   []*pba.AgentSubscribeRequest
+// 		model *pb.Model
+// 	}
+
+// 	smallMemory := uint64(100)
+
+// 	tests := []test{
+// 		{
+// 			name: "AgentScalingRequest",
+// 			req: []*pba.AgentSubscribeRequest{
+// 				{
+// 					ServerName:           "server1",
+// 					ReplicaIdx:           0,
+// 					Shared:               true,
+// 					AvailableMemoryBytes: 1000,
+// 					ReplicaConfig: &pba.ReplicaConfig{
+// 						InferenceSvc:      "server1",
+// 						InferenceHttpPort: 1,
+// 						MemoryBytes:       1000,
+// 						Capabilities:      []string{"sklearn"},
+// 					},
+// 				},
+// 			},
+// 			model: &pb.Model{Meta: &pb.MetaData{Name: "model1"},
+// 				ModelSpec: &pb.ModelSpec{
+// 					Uri:          "gs://model",
+// 					Requirements: []string{"sklearn"},
+// 					MemoryBytes:  &smallMemory,
+// 				},
+// 				DeploymentSpec: &pb.DeploymentSpec{Replicas: 1},
+// 			},
+// 		},
+// 	}
+
+// 	for _, test := range tests {
+// 		t.Run(test.name, func(t *testing.T) {
+// 			s, mockAgent, _ := createTestScheduler()
+// 			defer s.StopSendModelEvents()
+// 			defer s.StopSendServerEvents()
+
+// 			for _, repReq := range test.req {
+// 				err := s.modelStore.AddServerReplica(repReq)
+// 				g.Expect(err).To(BeNil())
+// 			}
+
+// 			// When
+// 			lm := pb.LoadModelRequest{
+// 				Model: test.model,
+// 			}
+// 			r, err := s.LoadModel(context.Background(), &lm)
+
+// 			g.Expect(nil).To(BeNil())
+// 		})
+// 	}
+// }
+
 func TestLoadPipeline(t *testing.T) {
 	g := NewGomegaWithT(t)
 	type test struct {

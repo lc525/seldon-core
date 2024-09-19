@@ -11,6 +11,7 @@ package agent
 
 import (
 	"fmt"
+	"io"
 	"testing"
 	"time"
 
@@ -22,7 +23,11 @@ import (
 	pbs "github.com/seldonio/seldon-core/apis/go/v2/mlops/scheduler"
 
 	"github.com/seldonio/seldon-core/scheduler/v2/pkg/coordinator"
+	scheduler2 "github.com/seldonio/seldon-core/scheduler/v2/pkg/scheduler"
+	ssv "github.com/seldonio/seldon-core/scheduler/v2/pkg/server"
 	"github.com/seldonio/seldon-core/scheduler/v2/pkg/store"
+	"github.com/seldonio/seldon-core/scheduler/v2/pkg/store/experiment"
+	"github.com/seldonio/seldon-core/scheduler/v2/pkg/store/pipeline"
 )
 
 type mockStore struct {
@@ -125,6 +130,35 @@ type mockGrpcStream struct {
 func (ms *mockGrpcStream) Send(msg *pb.ModelOperationMessage) error {
 	return ms.err
 }
+
+func NewMockGrpcStreamAgent_ModelScalingTrigger() *mockGrpcStreamAgent_ModelScalingTrigger {
+	return &mockGrpcStreamAgent_ModelScalingTrigger{
+		reqToServer: make(chan *pb.ModelScalingTriggerMessage, 5),
+	}
+}
+
+type mockGrpcStreamAgent_ModelScalingTrigger struct {
+	grpc.ServerStream
+	reqToServer		chan *pb.ModelScalingTriggerMessage
+}
+
+func (mst *mockGrpcStreamAgent_ModelScalingTrigger) SendAndClose(resp *pb.ModelScalingTriggerResponse) error {
+	return nil
+}
+
+func (mst *mockGrpcStreamAgent_ModelScalingTrigger) Recv() (*pb.ModelScalingTriggerMessage, error) {
+	req, ok := <-mst.reqToServer
+	if !ok {
+		return nil, io.EOF
+	}
+	return req, nil
+}
+
+func (mst *mockGrpcStreamAgent_ModelScalingTrigger) SendAsAgent(req *pb.ModelScalingTriggerMessage) error {
+	mst.reqToServer <- req
+	return nil
+}
+
 
 func TestSync(t *testing.T) {
 	log.SetLevel(log.DebugLevel)
@@ -803,6 +837,86 @@ func TestModelScalingProtos(t *testing.T) {
 			} else {
 				g.Expect(err).NotTo(BeNil())
 			}
+		})
+	}
+}
+
+func TestScalingFeature(t *testing.T) {
+	g := NewGomegaWithT(t)
+
+	createTestObjects := func() (*Server, *ssv.SchedulerServer, *scheduler2.SimpleScheduler, *store.MemoryStore, *coordinator.EventHub) {
+		logger := log.New()
+		log.SetLevel(log.DebugLevel)
+		eventHub, err := coordinator.NewEventHub(logger)
+		g.Expect(err).To(BeNil())
+		schedulerStore := store.NewMemoryStore(logger, store.NewLocalSchedulerStore(), eventHub)
+		experimentServer := experiment.NewExperimentServer(logger, eventHub, nil, nil)
+		pipelineServer := pipeline.NewPipelineStore(logger, eventHub, schedulerStore)
+		scheduler := scheduler2.NewSimpleScheduler(logger,
+			schedulerStore,
+			scheduler2.DefaultSchedulerConfig(schedulerStore))
+		schedSrv := ssv.NewSchedulerServer(logger, schedulerStore, experimentServer, pipelineServer, scheduler, eventHub)
+		agentSrv := NewAgentServer(logger, schedulerStore, scheduler, eventHub, false)
+		return agentSrv, schedSrv, scheduler, schedulerStore, eventHub
+	}
+
+	type test struct {
+		name string
+		agents                map[ServerKey]*AgentSubscriber
+		models								map[string]*store.ModelSnapshot
+		scalingTriggers			  []*pb.ModelScalingTriggerMessage
+	}
+
+	tests := []test{
+		{
+			agents: map[ServerKey]*AgentSubscriber{
+				{serverName: "server1", replicaIdx: 1}: {stream: &mockGrpcStream{}},
+			},
+			models: map[string]*store.ModelSnapshot{
+				"iris": {
+					Name: "iris",
+					Versions: []*store.ModelVersion{
+						store.NewModelVersion(
+							&pbs.Model{
+								Meta:           &pbs.MetaData{Name: "iris"},
+								DeploymentSpec: &pbs.DeploymentSpec{Replicas: 1, MinReplicas: 1, MaxReplicas: 10},
+							},
+							1,          // version
+							"server1",  // server
+							map[int]store.ReplicaStatus{
+								1: {State: store.Available},
+							},
+							false,                // deleted
+							store.ModelAvailable, // ModelState
+						),
+					},
+				},
+			},
+			scalingTriggers: []*pb.ModelScalingTriggerMessage{
+				{
+					ServerName: "server1",
+					ReplicaIdx: 1,
+					ModelName:  "iris",
+					ModelVersion: 1,
+					Trigger: pb.ModelScalingTriggerMessage_SCALE_UP,
+					Amount: 1,
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			agentSrv, _, _, _, _ := createTestObjects()
+			agentSrv.agents = test.agents
+
+			mockAgentModelScalingTriggerStream := NewMockGrpcStreamAgent_ModelScalingTrigger()
+			go agentSrv.ModelScalingTrigger(mockAgentModelScalingTriggerStream)
+			for _, scalingTrigger := range test.scalingTriggers{
+				mockAgentModelScalingTriggerStream.SendAsAgent(scalingTrigger)
+			}
+
+
 		})
 	}
 }
