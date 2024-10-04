@@ -6,7 +6,7 @@ Seldon can be configured via various config files.
 
 We allow configuration of the Kafka integration. In general this configuration looks like:
 
-{% @github-files/github-code-block url="https://github.com/SeldonIO/seldon-core/blob/v2.9.5/scheduler/config/kafka-internal.json" %}
+{% @github-files/github-code-block url="https://github.com/SeldonIO/seldon-core/blob/v2/scheduler/config/kafka-internal.json" %}
 
 The top level keys are:
 
@@ -29,7 +29,7 @@ The `consumerGroupIdPrefix` will ensure that all consumer groups created have a 
 For Kubernetes this is controlled via a ConfigMap called `seldon-kafka` whose default values are
 defined in the `SeldonConfig` custom resource.
 
-{% @github-files/github-code-block url="https://github.com/SeldonIO/seldon-core/blob/v2.9.5/k8s/yaml/components.yaml" %}
+{% @github-files/github-code-block url="https://github.com/SeldonIO/seldon-core/blob/v2/k8s/yaml/components.yaml" %}
 
 When the `SeldonRuntime` is installed in a namespace a configMap will be created with these
 settings for Kafka configuration.
@@ -37,7 +37,7 @@ settings for Kafka configuration.
 To customize the settings you can add and modify the Kafka configuration via Helm, for example
 below is a custom Helm values file that add compression for producers:
 
-{% @github-files/github-code-block url="https://github.com/SeldonIO/seldon-core/blob/v2.9.5/k8s/samples/values-runtime-kafka-compression.yaml" %}
+{% @github-files/github-code-block url="https://github.com/SeldonIO/seldon-core/blob/v2/k8s/samples/values-runtime-kafka-compression.yaml" %}
 
 To use this with the SeldonRuntime Helm chart:
 
@@ -72,7 +72,7 @@ You can create alternate `SeldonConfig`s with different values or override value
 
 We allow configuration of tracing. This file looks like:
 
-{% @github-files/github-code-block url="https://github.com/SeldonIO/seldon-core/blob/v2.9.5/scheduler/config/tracing-internal.json" %}
+{% @github-files/github-code-block url="https://github.com/SeldonIO/seldon-core/blob/v2/scheduler/config/tracing-internal.json" %}
 
 The top level keys are:
 
@@ -90,7 +90,7 @@ The top level keys are:
 
 For Kubernetes this is controlled via a ConfigMap call `seldon-tracing` whose default value is shown below:
 
-{% @github-files/github-code-block url="https://github.com/SeldonIO/seldon-core/blob/v2.9.5/scheduler/k8s/config/tracing.yaml" %}
+{% @github-files/github-code-block url="https://github.com/SeldonIO/seldon-core/blob/v2/scheduler/k8s/config/tracing.yaml" %}
 
 Note, this `ConfigMap` is created via our Helm charts and there is usually no need to modify it manually.
 
