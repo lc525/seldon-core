@@ -6,4 +6,4 @@ In non-Kubernetes environments users of Seldon could create a client to directly
 
 ## Proto Definition
 
-{% @github-files/github-code-block url="https://github.com/SeldonIO/seldon-core/blob/v2/apis/mlops/scheduler/scheduler.proto" %}
+{% @github-files/github-code-block url="https://github.com/SeldonIO/seldon-core/blob/v2.9.5/apis/mlops/scheduler/scheduler.proto" %}

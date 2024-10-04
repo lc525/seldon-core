@@ -40,7 +40,7 @@ If the release draft needs to be updated before being published, the new commits
 
 ### Draft New Release Action
 
-The [Draft New Release](https://github.com/SeldonIO/seldon-core/blob/v2/.github/workflows/draft-release.yml) workflow is the
+The [Draft New Release](https://github.com/SeldonIO/seldon-core/blob/v2.9.5/.github/workflows/draft-release.yml) workflow is the
 first one to run. It must be triggered manually using the [Actions](https://github.com/SeldonIO/seldon-core/actions/workflows/draft-release.yml)
 interface in the GitHub UI.
 
@@ -70,7 +70,7 @@ Once the workflow finishes, you will find a new release draft waiting to be publ
 
 ### Build docker images Action
 
-The [Build docker images](https://github.com/SeldonIO/seldon-core/blob/v2/.github/workflows/images.yml) workflow is the
+The [Build docker images](https://github.com/SeldonIO/seldon-core/blob/v2.9.5/.github/workflows/images.yml) workflow is the
 second one to run. It must be triggered manually using the [Actions](https://github.com/SeldonIO/seldon-core/actions/workflows/draft-release.yml)
 interface in the GitHub UI.
 

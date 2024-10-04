@@ -4,4 +4,4 @@ This API is for communication between the Seldon Scheduler and the Seldon Agent 
 
 ## Proto Definition
 
-{% @github-files/github-code-block url="https://github.com/SeldonIO/seldon-core/blob/v2/apis/mlops/agent/agent.proto" %}
+{% @github-files/github-code-block url="https://github.com/SeldonIO/seldon-core/blob/v2.9.5/apis/mlops/agent/agent.proto" %}
