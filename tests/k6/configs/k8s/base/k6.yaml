@@ -13,29 +13,29 @@ spec:
         imagePullPolicy: IfNotPresent
         # # choose from the following scenarios:
         # # infer_constant_vu
-        args: [
-          "--no-teardown",
-          "--summary-export",
-          "results/base.json",
-          "--out",
-          "csv=results/base.gz",
-          "-u",
-          "5",
-          "-i",
-          "100000",
-          "-d",
-          "120m",
-          "scenarios/infer_constant_vu.js",
-          ]
-        # # infer_constant_rate
         # args: [
         #   "--no-teardown",
         #   "--summary-export",
         #   "results/base.json",
         #   "--out",
         #   "csv=results/base.gz",
-        #   "scenarios/infer_constant_rate.js",
+        #   "-u",
+        #   "5",
+        #   "-i",
+        #   "100000",
+        #   "-d",
+        #   "120m",
+        #   "scenarios/infer_constant_vu.js",
         #   ]
+        # # infer_constant_rate
+        args: [
+          "--no-teardown",
+          "--summary-export",
+          "results/base.json",
+          "--out",
+          "csv=results/base.gz",
+          "scenarios/infer_constant_rate.js",
+          ]
         # # k8s-test-script
         # args: [
         #   "--summary-export",
@@ -61,6 +61,14 @@ spec:
         #   "scenarios/core2_qa_control_plane_ops.js",
         #   ]
         env:
+        - name: REQUEST_RATE
+          value: "20"
+        - name: REQUEST_RATES
+          value: "20,40,10,5,40"
+        - name: CONSTANT_RATE_DURATION_SECONDS
+          value: "600"
+        - name: CONSTANT_RATE_DURATIONS_SECONDS
+          value: "240"
         - name: USE_KUBE_CONTROL_PLANE
           value: "true"
         - name: SCHEDULER_ENDPOINT
@@ -84,8 +92,8 @@ spec:
         - name: MAX_MEM_UPDATE_FRACTION
           value: "0.1"
         - name: MAX_NUM_MODELS
-          value: "800,100,25,100,100"
-          # value: "0,0,25,100,100"
+          # value: "800,100,25,100,100"
+          value: "0,0,0,0,2"
         #
         # MAX_NUM_MODELS_HEADROOM is a variable used by control-plane tests.
         # It's the approximate number of models that can be created over

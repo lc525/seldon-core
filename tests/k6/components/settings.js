@@ -243,11 +243,26 @@ function requestRate() {
     return 10
 }
 
+function requestRates() {
+    if (__ENV.REQUEST_RATES) {
+        return __ENV.REQUEST_RATES
+    }
+    return [requestRate()]
+}
+
 function constantRateDurationSeconds() {
     if (__ENV.CONSTANT_RATE_DURATION_SECONDS) {
         return __ENV.CONSTANT_RATE_DURATION_SECONDS
     }
     return 30
+}
+
+function constantRateDurationsSeconds() {
+    if (__ENV.CONSTANT_RATE_DURATIONS_SECONDS) {
+        return __ENV.CONSTANT_RATE_DURATIONS_SECONDS
+    }
+    const reqNumberOfStages = requestRates().length
+    return new Array(reqNumberOfStages).fill(constantRateDurationSeconds()/reqNumberOfStages)
 }
 
 function podNamespace() {
@@ -335,7 +350,9 @@ export function getConfig() {
         "inferType" : inferType(),
         "doWarmup": doWarmup(),
         "requestRate": requestRate(),
+        "requestRates": requestRates(),
         "constantRateDurationSeconds": constantRateDurationSeconds(),
+        "constantRateDurationsSeconds": constantRateDurationsSeconds(),
         "modelReplicas": modelReplicas(),
         "maxModelReplicas": maxModelReplicas(),
         "namespace":  podNamespace(),
