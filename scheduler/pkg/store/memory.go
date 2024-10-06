@@ -640,6 +640,15 @@ func (m *MemoryStore) RemoveServerReplica(serverName string, replicaIdx int) ([]
 				evt,
 			)
 		}
+		serverEvt := coordinator.ServerEventMsg{
+			ServerName:    serverName,
+			ServerIdx:     uint32(replicaIdx),
+			UpdateContext: coordinator.SERVER_REPLICA_REMOVED,
+		}
+		m.eventHub.PublishServerEvent(
+			serverUpdateEventSource,
+			serverEvt,
+		)
 	}
 	return models, nil
 }

@@ -162,12 +162,21 @@ func (s *SchedulerServer) SubscribeServerStatus(req *pb.ServerSubscriptionReques
 	}
 }
 
-// TODO - Create a ServerStatusMsg type to disambiguate?
-func (s *SchedulerServer) handleServerEvent(event coordinator.ModelEventMsg) {
+func (s *SchedulerServer) handleServerEvent(event coordinator.ServerEventMsg) {
 	logger := s.logger.WithField("func", "handleServerEvent")
 	logger.Debugf("Got server state change for %s", event.String())
 
 	err := s.updateServerStatus(event)
+	if err != nil {
+		logger.WithError(err).Errorf("Failed to update server status for model event %s", event.String())
+	}
+}
+
+func (s *SchedulerServer) handleServerModelEvent(event coordinator.ModelEventMsg) {
+	logger := s.logger.WithField("func", "handleServerModelEvent")
+	logger.Debugf("Got server state change for %s", event.String())
+
+	err := s.updateServerModelStatus(event)
 	if err != nil {
 		logger.WithError(err).Errorf("Failed to update server status for model event %s", event.String())
 	}
@@ -181,8 +190,23 @@ func (s *SchedulerServer) StopSendServerEvents() {
 	}
 }
 
-func (s *SchedulerServer) updateServerStatus(evt coordinator.ModelEventMsg) error {
+func (s *SchedulerServer) updateServerStatus(evt coordinator.ServerEventMsg) error {
 	logger := s.logger.WithField("func", "sendServerStatusEvent")
+	logger.Infof("Updating server status for %s", evt.String())
+
+	s.serverEventStream.pendingLock.Lock()
+	// we are coalescing events so we only send one event (the latest status) per server
+	s.serverEventStream.pendingEvents[evt.ServerName] = struct{}{}
+	if s.serverEventStream.trigger == nil {
+		s.serverEventStream.trigger = time.AfterFunc(defaultBatchWait, s.sendServerStatus)
+	}
+	s.serverEventStream.pendingLock.Unlock()
+
+	return nil
+}
+
+func (s *SchedulerServer) updateServerModelStatus(evt coordinator.ModelEventMsg) error {
+	logger := s.logger.WithField("func", "sendServerModelStatusEvent")
 
 	model, err := s.modelStore.GetModel(evt.ModelName)
 	if err != nil {
@@ -224,11 +248,13 @@ func (s *SchedulerServer) sendServerStatus() {
 	defer s.serverEventStream.mu.Unlock()
 	for serverName := range pendingServers {
 		server, err := s.modelStore.GetServer(serverName, true, true)
+		var ssr *pb.ServerStatusResponse
 		if err != nil {
+			ssr = createNoReplicasServerStatusResponse(serverName)
 			logger.Errorf("Failed to get server %s", serverName)
-			continue
+		} else {
+			ssr = createServerStatusResponse(server)
 		}
-		ssr := createServerStatusResponse(server)
 
 		for stream, subscription := range s.serverEventStream.streams {
 			hasExpired, err := sendWithTimeout(func() error { return stream.Send(ssr) }, s.timeout)

@@ -8911,11 +8911,15 @@ spec:
               replicas:
                 format: int32
                 type: integer
+              replicasConnectedToControlPlane:
+                format: int32
+                type: integer
               selector:
                 type: string
             required:
             - loadedModels
             - replicas
+            - replicasConnectedToControlPlane
             - selector
             type: object
         type: object

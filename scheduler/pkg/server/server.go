@@ -38,6 +38,7 @@ const (
 	grpcMaxConcurrentStreams       = 1_000_000
 	pendingEventsQueueSize     int = 1000
 	modelEventHandlerName          = "scheduler.server.models"
+	serverModelEventHandlerName    = "scheduler.server.servers.model"
 	serverEventHandlerName         = "scheduler.server.servers"
 	experimentEventHandlerName     = "scheduler.server.experiments"
 	pipelineEventHandlerName       = "scheduler.server.pipelines"
@@ -209,6 +210,12 @@ func NewSchedulerServer(
 		s.handleModelEvent,
 	)
 	eventHub.RegisterModelEventHandler(
+		serverModelEventHandlerName,
+		pendingEventsQueueSize,
+		s.logger,
+		s.handleServerModelEvent,
+	)
+	eventHub.RegisterServerEventHandler(
 		serverEventHandlerName,
 		pendingEventsQueueSize,
 		s.logger,
@@ -441,6 +448,17 @@ func (s *SchedulerServer) ServerStatus(
 		return nil
 	}
 }
+
+
+func createNoReplicasServerStatusResponse(serverName string) *pb.ServerStatusResponse {
+	return &pb.ServerStatusResponse{
+		ServerName:       serverName,
+		ExpectedReplicas: 0,
+		AvailableReplicas: 0,
+		NumLoadedModelReplicas: 0,
+	}
+}
+
 
 func createServerStatusResponse(s *store.ServerSnapshot) *pb.ServerStatusResponse {
 	// note we dont count draining replicas in available replicas

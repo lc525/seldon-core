@@ -22,6 +22,22 @@ const (
 	ServerContainerName = "server"
 )
 
+type NotReadyReasonType string
+type ReadyReasonType string
+
+const (
+	ErrorReasonTypeUnknown    NotReadyReasonType = "ErrorReasonTypeUnknown"
+	ReasonFailedSchedulerSync NotReadyReasonType = "FailedSchedulerSync"
+	ReasonFailedReconcile     NotReadyReasonType = "FailedReconcile"
+	ReasonWaitingForReplicas  NotReadyReasonType = "WaitingForReplicas"
+)
+
+const (
+	AllReplicasConnected  ReadyReasonType = "AllReplicasConnected"
+	SomeReplicasConnected ReadyReasonType = "SomeReplicasConnected"
+	NoReplicasConnected   ReadyReasonType = "NoReplicasConnected"
+)
+
 // ServerSpec defines the desired state of Server
 type ServerSpec struct {
 	// Server definition
@@ -64,9 +80,10 @@ type ServerStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 	duckv1.Status `json:",inline"`
 	// Number of loaded models
-	LoadedModelReplicas int32  `json:"loadedModels"`
-	Replicas            int32  `json:"replicas"`
-	Selector            string `json:"selector"`
+	LoadedModelReplicas             int32  `json:"loadedModels"`
+	Replicas                        int32  `json:"replicas"`
+	ReplicasConnectedToControlPlane int32  `json:"replicasConnectedToControlPlane"`
+	Selector                        string `json:"selector"`
 }
 
 //+kubebuilder:object:root=true
@@ -109,10 +126,12 @@ func (s *ServerSpec) Default() {
 }
 
 const (
-	StatefulSetReady apis.ConditionType = "StatefulSetReady"
+	StatefulSetReady             apis.ConditionType = "StatefulSetReady"
+	ControlPlaneConnectionsReady apis.ConditionType = "ControlPlaneConnectionsReady"
 )
 
 var serverConditionSet = apis.NewLivingConditionSet(
+	ControlPlaneConnectionsReady,
 	StatefulSetReady,
 )
 
@@ -148,7 +167,7 @@ func (ss *ServerStatus) SetCondition(condition *apis.Condition) {
 	}
 }
 
-func (ss *ServerStatus) CreateAndSetCondition(conditionType apis.ConditionType, isTrue bool, reason string) {
+func (ss *ServerStatus) CreateAndSetCondition(conditionType apis.ConditionType, isTrue bool, reason string, message string) {
 	condition := apis.Condition{}
 	if isTrue {
 		condition.Status = v1.ConditionTrue
@@ -157,6 +176,9 @@ func (ss *ServerStatus) CreateAndSetCondition(conditionType apis.ConditionType, 
 	}
 	condition.Type = conditionType
 	condition.Reason = reason
+	if message != "" {
+		condition.Message = message
+	}
 	condition.LastTransitionTime = apis.VolatileTime{
 		Inner: metav1.Now(),
 	}

@@ -92,7 +92,7 @@ func (r *ServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	err := r.Scheduler.ServerNotify(ctx, nil, []v1alpha1.Server{*server}, false)
 	if err != nil {
-		r.updateStatusFromError(ctx, logger, server, err)
+		r.updateStatusFromError(ctx, logger, server, mlopsv1alpha1.ReasonFailedSchedulerSync, err)
 		return reconcile.Result{}, err
 	}
 
@@ -102,20 +102,20 @@ func (r *ServerReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		Client: r.Client,
 	})
 	if err != nil {
-		r.updateStatusFromError(ctx, logger, server, err)
+		r.updateStatusFromError(ctx, logger, server, mlopsv1alpha1.ReasonFailedReconcile, err)
 		return reconcile.Result{}, err
 	}
 
 	// Set Controller References
 	err = setControllerReferences(server, common.ToMetaObjects(sr.GetResources()), r.Scheme)
 	if err != nil {
-		r.updateStatusFromError(ctx, logger, server, err)
+		r.updateStatusFromError(ctx, logger, server, mlopsv1alpha1.ReasonFailedReconcile, err)
 		return reconcile.Result{}, err
 	}
 
 	err = sr.Reconcile()
 	if err != nil {
-		r.updateStatusFromError(ctx, logger, server, err)
+		r.updateStatusFromError(ctx, logger, server, mlopsv1alpha1.ReasonFailedReconcile, err)
 		return reconcile.Result{}, err
 	}
 
@@ -144,8 +144,14 @@ func serverReady(status mlopsv1alpha1.ServerStatus) bool {
 		status.GetCondition(apis.ConditionReady).Status == v1.ConditionTrue
 }
 
-func (r *ServerReconciler) updateStatusFromError(ctx context.Context, logger logr.Logger, server *mlopsv1alpha1.Server, err error) {
-	server.Status.CreateAndSetCondition(mlopsv1alpha1.StatefulSetReady, false, err.Error())
+func (r *ServerReconciler) updateStatusFromError(
+	ctx context.Context,
+	logger logr.Logger,
+	server *mlopsv1alpha1.Server,
+	errType v1alpha1.NotReadyReasonType,
+	err error,
+) {
+	server.Status.CreateAndSetCondition(mlopsv1alpha1.StatefulSetReady, false, string(errType), err.Error())
 	if errSet := r.Status().Update(ctx, server); errSet != nil {
 		logger.Error(errSet, "Failed to set status for server on error", "server", server.Name, "error", err.Error())
 	}
@@ -156,6 +162,17 @@ func (r *ServerReconciler) updateStatus(server *mlopsv1alpha1.Server) error {
 	namespacedName := types.NamespacedName{Name: server.Name, Namespace: server.Namespace}
 	if err := r.Get(context.TODO(), namespacedName, existingServer); err != nil {
 		if apimachinary_errors.IsNotFound(err) { //Ignore NotFound errors
+			if server.Status.Replicas != 0 {
+				server.Status.CreateAndSetCondition(
+					mlopsv1alpha1.ControlPlaneConnectionsReady,
+					false,
+					string(v1alpha1.ReasonWaitingForReplicas),
+					"Waiting for server replica pods to connect to control plane",
+				)
+			}
+			if err = r.Status().Update(context.TODO(), server); err != nil {
+				return err
+			}
 			return nil
 		}
 		return err
@@ -164,6 +181,30 @@ func (r *ServerReconciler) updateStatus(server *mlopsv1alpha1.Server) error {
 	if equality.Semantic.DeepEqual(existingServer.Status, server.Status) {
 		// Not updating as no difference
 	} else {
+		atLeastMinConnected :=
+			server.Spec.MinReplicas != nil &&
+				existingServer.Status.ReplicasConnectedToControlPlane >= *server.Spec.MinReplicas
+		allConnected :=
+			existingServer.Status.ReplicasConnectedToControlPlane >= server.Status.Replicas
+		replicaConnectionStatusType := v1alpha1.SomeReplicasConnected
+		if allConnected {
+			replicaConnectionStatusType = v1alpha1.AllReplicasConnected
+		}
+		if server.Status.Replicas != 0 {
+			server.Status.CreateAndSetCondition(
+				mlopsv1alpha1.ControlPlaneConnectionsReady,
+				atLeastMinConnected || allConnected,
+				string(replicaConnectionStatusType),
+				"",
+			)
+		} else {
+			server.Status.CreateAndSetCondition(
+				mlopsv1alpha1.ControlPlaneConnectionsReady,
+				true,
+				string(v1alpha1.NoReplicasConnected),
+				"This server has no replicas",
+			)
+		}
 		if err := r.Status().Update(context.TODO(), server); err != nil {
 			r.Recorder.Eventf(server, v1.EventTypeWarning, "UpdateFailed",
 				"Failed to update status for Model %q: %v", server.Name, err)

@@ -11,6 +11,7 @@ package scheduler
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	grpc_retry "github.com/grpc-ecosystem/go-grpc-middleware/retry"
@@ -91,7 +92,7 @@ func (s *SchedulerClient) SubscribeServerEvents(ctx context.Context, grpcClient 
 		return err
 	}
 
-	// on new reconnects we send a list of servers to the schedule
+	// on new reconnects we send a list of servers to the scheduler
 	go handleRegisteredServers(ctx, namespace, s, grpcClient)
 
 	for {
@@ -104,31 +105,65 @@ func (s *SchedulerClient) SubscribeServerEvents(ctx context.Context, grpcClient 
 			return err
 		}
 
-		logger.Info("Received event", "server", event.ServerName)
-		if event.GetKubernetesMeta() == nil {
-			logger.Info("Received server event with no k8s metadata so ignoring", "server", event.ServerName)
-			continue
+		logger.Info("Received event", "server", event.ServerName, "raw", event)
+		kubernetesMeta := event.GetKubernetesMeta()
+		if kubernetesMeta == nil {
+			kubernetesMeta = &scheduler.KubernetesMeta{
+				Namespace: namespace,
+			}
 		}
 		server := &v1alpha1.Server{}
-		err = s.Get(ctx, client.ObjectKey{Name: event.ServerName, Namespace: event.GetKubernetesMeta().GetNamespace()}, server)
+		err = s.Get(ctx, client.ObjectKey{Name: event.ServerName, Namespace: kubernetesMeta.GetNamespace()}, server)
 		if err != nil {
-			logger.Error(err, "Failed to get server", "name", event.ServerName, "namespace", event.GetKubernetesMeta().GetNamespace())
+			logger.Error(err, "Failed to get server", "name", event.ServerName, "namespace", kubernetesMeta.GetNamespace())
 			continue
 		}
 
 		// Try to update status
 		retryErr := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 			server := &v1alpha1.Server{}
-			err = s.Get(ctx, client.ObjectKey{Name: event.ServerName, Namespace: event.GetKubernetesMeta().GetNamespace()}, server)
+			err = s.Get(ctx, client.ObjectKey{Name: event.ServerName, Namespace: kubernetesMeta.GetNamespace()}, server)
 			if err != nil {
 				return err
 			}
-			if event.GetKubernetesMeta().Generation != server.Generation {
+			if event.GetKubernetesMeta() != nil &&
+				event.GetKubernetesMeta().Generation != server.Generation {
 				logger.Info("Ignoring event for old generation", "currentGeneration", server.Generation, "eventGeneration", event.GetKubernetesMeta().Generation, "server", event.ServerName)
 				return nil
 			}
 			// Handle status update
 			server.Status.LoadedModelReplicas = event.NumLoadedModelReplicas
+			server.Status.ReplicasConnectedToControlPlane = event.AvailableReplicas
+			atLeastMinConnected :=
+				server.Spec.MinReplicas != nil &&
+					event.AvailableReplicas >= *server.Spec.MinReplicas
+			allConnected :=
+				event.AvailableReplicas >= server.Status.Replicas
+			replicaConnectionStatusType := v1alpha1.SomeReplicasConnected
+			replicaConnectionStatusMsg := fmt.Sprintf("%d/%d replicas available", event.AvailableReplicas, event.ExpectedReplicas)
+			if allConnected {
+				if server.Status.Replicas != 0 {
+					replicaConnectionStatusType = v1alpha1.AllReplicasConnected
+					replicaConnectionStatusMsg = "All replicas connected to control plane"
+				} else {
+					replicaConnectionStatusType = v1alpha1.NoReplicasConnected
+					replicaConnectionStatusMsg = "This server has no replicas"
+				}
+			}
+			if server.Status.Replicas != 0 {
+				server.Status.CreateAndSetCondition(
+					v1alpha1.ControlPlaneConnectionsReady,
+					atLeastMinConnected || allConnected,
+					string(replicaConnectionStatusType),
+					replicaConnectionStatusMsg)
+			} else {
+				server.Status.CreateAndSetCondition(
+					v1alpha1.ControlPlaneConnectionsReady,
+					true,
+					string(replicaConnectionStatusType),
+					replicaConnectionStatusMsg)
+			}
+			logger.Info("Setting server status", "server", server)
 			return s.updateServerStatus(server)
 		})
 		if retryErr != nil {
