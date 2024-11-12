@@ -7,6 +7,7 @@ Seldon can be configured via various config files.
 We allow configuration of the Kafka integration. In general this configuration looks like:
 
 {% @github-files/github-code-block url="https://github.com/SeldonIO/seldon-core/blob/v2/scheduler/config/kafka-internal.json" %}
+{% @github-files/github-code-block url="https://github.com/SeldonIO/seldon-core/blob/v2/scheduler/config/kafka-internal.json" %}
 
 The top level keys are:
 
