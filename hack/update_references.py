@@ -15,7 +15,15 @@ def get_markdown_files(directory: str) -> List[str]:
     return markdown_files
 
 def get_current_git_tag() -> str:
-    return subprocess.check_output(['git', 'describe', '--tags', '--abbrev=0']).decode('utf-8').strip()
+    return subprocess.check_output(
+        ['git', 'describe', '--tags', '--abbrev=0']
+    ).decode('utf-8').strip()
+
+def get_target_git_branch() -> str:
+    head_name = subprocess.check_output(
+        ['git', 'rev-parse', '--abbrev-ref HEAD']
+    ).decode('utf-8').strip()
+    return os.environ.get('RELEASE_BRANCH_REF', head_name)
 
 def update_urls(content: str, new_version: str) -> Tuple[str, int]:
     """
@@ -51,7 +59,7 @@ def process_file(file_path: str, new_version: str) -> int:
 
 def main():
     codebase_dir = './docs-gb'  # GitBook directory, change if needed
-    new_version = get_current_git_tag()
+    new_version = get_target_git_branch()
 
     markdown_files = get_markdown_files(codebase_dir)
     total_replacements = 0
