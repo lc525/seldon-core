@@ -1,0 +1,32 @@
+name: docs-gb-update-file-references
+
+on:
+  pull_request:
+    branches:
+      - 'release-**'
+    types:
+      - opened
+      - reopened
+      - edited
+
+jobs:
+  update-docs-gb-file-references:
+    # if: github.repository == 'SeldonIO/seldon-core' # Do not run this on forks.
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+      contents: write
+    steps:
+      - name: Setup repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - run: |
+          make docs-gb-update-file-references
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Update file references in docs"
+          git push
+        env:
+          RELEASE_BRANCH_REF: ${{ github.base_ref }}
