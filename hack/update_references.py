@@ -36,7 +36,7 @@ def update_urls(content: str, new_version: str) -> Tuple[str, int]:
         prefix = match.group(1)
         old_version = match.group(2)
         suffix = match.group(3)
-        return f"{prefix}{new_version[1:]}{suffix}"
+        return f"{prefix}{new_version}{suffix}"
 
     updated_content, count = re.subn(pattern, replace_version, content)
     return updated_content, count
