@@ -30,7 +30,7 @@ def update_urls(content: str, new_version: str) -> Tuple[str, int]:
     Update URLs in the content with the new version.
     Returns the updated content and the number of replacements made.
     """
-    pattern = r'(https://github\.com/SeldonIO/seldon-core/blob/v)(\d+(?:\.\d+)*)(/.+)'
+    pattern = r'(https://github\.com/SeldonIO/seldon-core/blob/)v(\d+(?:\.\d+)*)(/.+)'
 
     def replace_version(match):
         prefix = match.group(1)
