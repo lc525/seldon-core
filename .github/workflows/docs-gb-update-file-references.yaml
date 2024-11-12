@@ -29,7 +29,7 @@ jobs:
 
       - name: Update file references in docs
         run: |
-          make docs-gitbook-update-file-references
+          make docs-gitbook-update-code-references
           git add .
           git commit -m "Update file references in docs"
           git push
