@@ -9,6 +9,9 @@ on:
       - reopened
       - edited
 
+env:
+  GITHUB_USER: seldondev
+
 jobs:
   update-docs-gb-file-references:
     # if: github.repository == 'SeldonIO/seldon-core' # Do not run this on forks.
